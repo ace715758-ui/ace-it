@@ -54,8 +54,9 @@ export default function LoginForm() {
 
       router.push(redirectTo)
       router.refresh()
-    } catch {
-      toast.error('Something went wrong. Please try again.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }

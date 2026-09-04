@@ -54,8 +54,9 @@ export default function SignUpForm() {
 
       toast.success('Account created! Please check your email to verify your account.')
       router.push('/login?message=check-email')
-    } catch {
-      toast.error('Something went wrong. Please try again.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }
