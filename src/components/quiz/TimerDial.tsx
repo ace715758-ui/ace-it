@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pause, Play, RotateCcw, Timer as TimerIcon } from 'lucide-react'
+import { Pause, Play, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TimerDialProps {
@@ -43,7 +43,6 @@ export default function TimerDial({
   useEffect(() => {
     if (initialSeconds <= 0) return
 
-    setTimeLeft(initialSeconds)
     timeoutCalledRef.current = false
 
     const interval = setInterval(() => {

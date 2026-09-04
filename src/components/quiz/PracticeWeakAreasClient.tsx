@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   AlertCircle,
+  ArrowRight,
   BookOpen,
   Brain,
   CheckCircle2,
@@ -12,6 +13,7 @@ import {
   ChevronUp,
   FileText,
   Flame,
+  Lightbulb,
   Plus,
   RefreshCw,
   Sparkles,
@@ -203,36 +205,92 @@ export default function PracticeWeakAreasClient({
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12">
-      {/* Header Banner */}
-      <div className="relative rounded-3xl p-6 sm:p-8 overflow-hidden bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 text-white shadow-xl">
+      {/* Header Banner (Inspired by user design) */}
+      <div className="relative rounded-3xl p-6 sm:p-9 lg:p-10 overflow-hidden bg-gradient-to-r from-[#0b0f2e] via-[#121648] to-[#1d1b54] text-white shadow-2xl border border-indigo-500/20">
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-sky-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-pink-500/15 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          <div className="lg:col-span-8 space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-white text-xs font-semibold backdrop-blur-sm border border-white/10">
-              <Target className="w-3.5 h-3.5 text-sky-400" />
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-7 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 text-indigo-200 text-xs font-semibold backdrop-blur-md border border-white/15">
+              <Brain className="w-3.5 h-3.5 text-sky-400" />
               <span>AI Cognitive Diagnostics Engine</span>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-              Practice Weak Areas
+
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
+              Practice{' '}
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-indigo-300 to-pink-400">
+                Weak Areas
+              </span>
             </h1>
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
+
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl">
               Ace-It! analyzes your quiz attempts, identifies learning gaps below 75% accuracy, and recommends targeted practice sessions to turn weak spots into subject mastery.
             </p>
+
+            {/* 3 Core Value Proposition Feature Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <div className="flex items-start gap-2.5 p-2.5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xs">
+                <div className="w-8 h-8 rounded-xl bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0">
+                  <Target className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Find Your Gaps</h4>
+                  <p className="text-[10.5px] text-slate-300 leading-tight">Pinpoints topics you need to improve on.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-2.5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xs">
+                <div className="w-8 h-8 rounded-xl bg-sky-600/30 border border-sky-500/40 flex items-center justify-center text-sky-300 shrink-0">
+                  <Lightbulb className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Get Targeted Practice</h4>
+                  <p className="text-[10.5px] text-slate-300 leading-tight">Focus on what matters most.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 p-2.5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xs">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Track Your Progress</h4>
+                  <p className="text-[10.5px] text-slate-300 leading-tight">See your improvement over time.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                onClick={() => {
+                  setFilter('weak')
+                  const el = document.getElementById('topics-section')
+                  if (el) el.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-600 to-pink-600 hover:opacity-95 text-white font-bold shadow-lg shadow-purple-500/30 px-6 py-3 h-auto text-sm transition-all hover:scale-[1.02]"
+              >
+                Start Practice
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
           </div>
 
-          <div className="hidden lg:block lg:col-span-4 relative group">
-            <div className="relative aspect-[16/11] rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-indigo-950/50">
+          <div className="hidden lg:block lg:col-span-5 relative group">
+            <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-indigo-950/60">
               <Image
-                src="/images/study_diagnostics_brain.jpg"
+                src="/images/cognitive_brain_diagnostics.jpg"
                 alt="AI Cognitive Diagnostics & Knowledge Graph"
                 fill
                 className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                sizes="350px"
+                sizes="(max-width: 1024px) 100vw, 480px"
+                priority
               />
-              <div className="absolute bottom-2 inset-x-2 p-1.5 rounded-lg bg-slate-950/80 backdrop-blur-md border border-white/10 text-center">
-                <p className="text-[10px] font-bold text-sky-400">Targeted Learning Calibration</p>
+              <div className="absolute bottom-2.5 inset-x-2.5 p-2 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/15 text-center flex items-center justify-center gap-1.5 shadow-lg">
+                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                <p className="text-[11px] font-bold text-sky-300">
+                  Targeted Learning Calibration &amp; Neural Analytics
+                </p>
               </div>
             </div>
           </div>
@@ -291,7 +349,7 @@ export default function PracticeWeakAreasClient({
       </div>
 
       {/* Tabs / Filter Pills */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+      <div id="topics-section" className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1.5 p-1 bg-muted/60 dark:bg-muted/30 border border-border/50 rounded-2xl">
           <button
             onClick={() => setFilter('all')}

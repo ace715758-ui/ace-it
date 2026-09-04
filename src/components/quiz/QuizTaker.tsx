@@ -3,14 +3,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  AlertCircle,
   Check,
   ChevronLeft,
   ChevronRight,
   Clock,
   HelpCircle,
   Loader2,
-  RotateCcw,
   Send,
   Sparkles,
   Timer,
@@ -32,7 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import TimerDial from '@/components/quiz/TimerDial'
-import type { Quiz, Question } from '@/types/database'
+import type { Quiz } from '@/types/database'
 
 interface QuizTakerProps {
   quiz: Quiz
