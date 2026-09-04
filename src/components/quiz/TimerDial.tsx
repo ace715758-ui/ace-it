@@ -1,13 +1,17 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pause, Play } from 'lucide-react'
+import { Pause, Play, RotateCcw, Timer as TimerIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface TimerDialProps {
   initialSeconds: number
   onTimeout?: () => void
   size?: number
   showControls?: boolean
+  compact?: boolean
+  className?: string
+  onReset?: () => void
 }
 
 const RADIUS = 48
@@ -16,26 +20,44 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 export default function TimerDial({
   initialSeconds,
   onTimeout,
-  size = 110,
+  size = 40,
   showControls = true,
+  compact = true,
+  className,
+  onReset,
 }: TimerDialProps) {
   const [timeLeft, setTimeLeft] = useState<number>(initialSeconds)
   const [isPaused, setIsPaused] = useState<boolean>(false)
   const timeoutCalledRef = useRef<boolean>(false)
+  const onTimeoutRef = useRef(onTimeout)
+
+  // Keep ref up to date with latest onTimeout callback
+  useEffect(() => {
+    onTimeoutRef.current = onTimeout
+  }, [onTimeout])
+
+  // Unique ID for SVG definitions to prevent conflicts
+  const rawId = React.useId()
+  const uid = rawId.replace(/[^a-zA-Z0-9]/g, '')
 
   useEffect(() => {
     if (initialSeconds <= 0) return
 
+    setTimeLeft(initialSeconds)
     timeoutCalledRef.current = false
+
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (isPaused) return prev
         const next = Math.max(0, prev - 0.1)
         if (next <= 0) {
           clearInterval(interval)
-          if (!timeoutCalledRef.current && onTimeout) {
+          if (!timeoutCalledRef.current) {
             timeoutCalledRef.current = true
-            onTimeout()
+            // Run onTimeout outside React's render/state-updater cycle to avoid setState during render
+            setTimeout(() => {
+              onTimeoutRef.current?.()
+            }, 0)
           }
           return 0
         }
@@ -44,36 +66,137 @@ export default function TimerDial({
     }, 100)
 
     return () => clearInterval(interval)
-  }, [initialSeconds, isPaused, onTimeout])
+  }, [initialSeconds, isPaused])
 
   const fraction = initialSeconds > 0 ? Math.max(0, Math.min(1, timeLeft / initialSeconds)) : 0
   const strokeDashoffset = CIRCUMFERENCE * (1 - fraction)
 
-  // Gradient & color logic matching the Ace-It! modern palette
+  // Dynamic gradient and alert colors
   let strokeGradientStart = '#6366F1' // Indigo
   let strokeGradientEnd = '#8B5CF6' // Violet
-  let badgeColor = 'text-primary'
+  let badgeTextColor = 'text-indigo-600 dark:text-indigo-400'
+  let badgeBg = 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200/80 dark:border-indigo-800/60'
   let isCritical = false
 
   if (timeLeft <= 5) {
     strokeGradientStart = '#EF4444' // Red
     strokeGradientEnd = '#F43F5E' // Rose
-    badgeColor = 'text-rose-500'
+    badgeTextColor = 'text-rose-600 dark:text-rose-400'
+    badgeBg = 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800/80'
     isCritical = true
   } else if (timeLeft <= 10) {
     strokeGradientStart = '#F59E0B' // Amber
     strokeGradientEnd = '#F97316' // Orange
-    badgeColor = 'text-amber-500'
+    badgeTextColor = 'text-amber-600 dark:text-amber-400'
+    badgeBg = 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800/60'
   }
 
   const displaySeconds = Math.ceil(timeLeft)
 
-  return (
-    <div className="flex flex-col items-center justify-center select-none">
+  // 1. Compact View (Inline Header Pill - Zero vertical overhead)
+  if (compact) {
+    return (
       <div
-        className={`relative flex items-center justify-center transition-transform ${
+        className={cn(
+          'inline-flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-xs transition-all duration-300 select-none',
+          badgeBg,
+          isCritical && !isPaused ? 'animate-pulse' : '',
+          className
+        )}
+        role="timer"
+        aria-label={`Time remaining: ${displaySeconds} seconds`}
+      >
+        {/* Mini SVG Ring Indicator */}
+        <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
+          <svg viewBox="0 0 108 108" className="w-full h-full -rotate-90 transform">
+            <defs>
+              <linearGradient id={`timerGradCompact_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={strokeGradientStart} />
+                <stop offset="100%" stopColor={strokeGradientEnd} />
+              </linearGradient>
+            </defs>
+            <circle
+              cx="54"
+              cy="54"
+              r={RADIUS}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="14"
+              className="text-slate-300 dark:text-slate-700/60"
+            />
+            <circle
+              cx="54"
+              cy="54"
+              r={RADIUS}
+              fill="none"
+              stroke={`url(#timerGradCompact_${uid})`}
+              strokeWidth="14"
+              strokeLinecap="round"
+              style={{
+                strokeDasharray: CIRCUMFERENCE,
+                strokeDashoffset,
+                transition: 'stroke-dashoffset 0.1s linear',
+              }}
+            />
+          </svg>
+        </div>
+
+        {/* Live Seconds Countdown */}
+        <div className="flex items-baseline gap-1 font-mono">
+          <span className={cn('text-sm font-extrabold tracking-tight', badgeTextColor)}>
+            {displaySeconds}
+          </span>
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+            {isPaused ? 'PAUSED' : 's'}
+          </span>
+        </div>
+
+        {/* Quick Controls */}
+        {showControls && (
+          <div className="flex items-center gap-1 pl-1 border-l border-border/60">
+            <button
+              type="button"
+              onClick={() => setIsPaused((p) => !p)}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              title={isPaused ? 'Resume timer' : 'Pause timer'}
+              aria-label={isPaused ? 'Resume timer' : 'Pause timer'}
+            >
+              {isPaused ? (
+                <Play className="w-3.5 h-3.5 text-primary fill-primary" />
+              ) : (
+                <Pause className="w-3.5 h-3.5" />
+              )}
+            </button>
+
+            {onReset && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTimeLeft(initialSeconds)
+                  timeoutCalledRef.current = false
+                  onReset()
+                }}
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                title="Reset timer for this question"
+                aria-label="Reset timer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // 2. Large Dial View (If explicitly chosen)
+  return (
+    <div className={cn('flex flex-col items-center justify-center select-none', className)}>
+      <div
+        className={cn(
+          'relative flex items-center justify-center transition-transform',
           isCritical && !isPaused ? 'animate-pulse scale-105' : ''
-        }`}
+        )}
         style={{ width: size, height: size }}
         role="timer"
         aria-live="polite"
@@ -84,39 +207,29 @@ export default function TimerDial({
           className="w-full h-full -rotate-90 transform transition-transform filter drop-shadow-sm"
         >
           <defs>
-            <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <linearGradient id={`timerGradLarge_${uid}`} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor={strokeGradientStart} />
               <stop offset="100%" stopColor={strokeGradientEnd} />
             </linearGradient>
-            <filter id="timerGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
           </defs>
 
-          {/* Background Track */}
           <circle
             cx="54"
             cy="54"
             r={RADIUS}
             fill="none"
             stroke="currentColor"
-            strokeWidth="6"
+            strokeWidth="8"
             className="text-muted/30 dark:text-slate-800"
           />
-          {/* Animated Countdown Progress */}
           <circle
             cx="54"
             cy="54"
             r={RADIUS}
             fill="none"
-            stroke="url(#timerGradient)"
-            strokeWidth="6"
+            stroke={`url(#timerGradLarge_${uid})`}
+            strokeWidth="8"
             strokeLinecap="round"
-            filter="url(#timerGlow)"
             style={{
               strokeDasharray: CIRCUMFERENCE,
               strokeDashoffset,
@@ -125,26 +238,21 @@ export default function TimerDial({
           />
         </svg>
 
-        {/* Center Countdown Display */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span
-            className={`text-2xl font-black tracking-tight transition-colors ${badgeColor}`}
-          >
+          <span className={cn('text-xl font-black tracking-tight', badgeTextColor)}>
             {displaySeconds}
           </span>
-          <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase -mt-0.5">
+          <span className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase -mt-0.5">
             {isPaused ? 'PAUSED' : 'SEC'}
           </span>
         </div>
       </div>
 
-      {/* Quick Pause/Resume Button */}
       {showControls && (
         <button
           type="button"
           onClick={() => setIsPaused((p) => !p)}
-          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-all px-2.5 py-1 rounded-full bg-muted/40 hover:bg-muted border border-border/60 hover:border-border"
-          aria-label={isPaused ? 'Resume timer' : 'Pause timer'}
+          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all px-2.5 py-0.5 rounded-full bg-muted/40 hover:bg-muted border border-border/60"
         >
           {isPaused ? (
             <>
