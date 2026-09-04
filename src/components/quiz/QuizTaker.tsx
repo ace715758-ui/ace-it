@@ -91,7 +91,7 @@ export default function QuizTaker({
   const answeredCount = Object.keys(answers).length
   const progressPercent = Math.round(((currentIndex + 1) / totalQuestions) * 100)
 
-  // Handle question timeout: auto-advance to next question like a real timed exam
+  // Handle question timeout: unlock next button and auto-advance
   const handleTimeout = useCallback(() => {
     if (!currentQuestion) return
 
@@ -99,17 +99,17 @@ export default function QuizTaker({
 
     if (currentIndex < totalQuestions - 1) {
       toast.warning(`Time's up for Question ${currentIndex + 1}!`, {
-        description: `Transitioning to Question ${currentIndex + 2}...`,
+        description: `You can now move to Question ${currentIndex + 2}.`,
         duration: 2500,
       })
-      // Smoothly advance after brief 350ms pause to let user hear time's up chime
+      // Auto-advance after brief 350ms pause
       setTimeout(() => {
         setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))
       }, 350)
     } else {
       toast.error("Time's up for the final question!", {
-        description: 'Test time has concluded. Please review and submit your quiz.',
-        duration: 4000,
+        description: 'Submitting your quiz now...',
+        duration: 2500,
       })
       setTimeout(() => {
         setShowConfirm(true)
@@ -121,9 +121,16 @@ export default function QuizTaker({
     (questionId: string, answer: string) => {
       // If question has already timed out, lock answers to ensure fairness
       if (timedOutQuestions[questionId]) return
-      setAnswers((prev) => ({ ...prev, [questionId]: answer }))
+      setAnswers((prev) => {
+        const updated = { ...prev, [questionId]: answer }
+        // If this is the last question and it's now answered, open submit dialog
+        if (currentIndex === totalQuestions - 1) {
+          setTimeout(() => setShowConfirm(true), 400)
+        }
+        return updated
+      })
     },
-    [timedOutQuestions]
+    [timedOutQuestions, currentIndex, totalQuestions]
   )
 
   const goTo = useCallback((index: number) => {
@@ -131,6 +138,12 @@ export default function QuizTaker({
       setCurrentIndex(index)
     }
   }, [totalQuestions])
+
+  // Can only advance when current question is answered or timed out
+  const canAdvance = Boolean(
+    currentQuestion &&
+    (answers[currentQuestion.id] || timedOutQuestions[currentQuestion.id])
+  )
 
   function resetQuestionTimer() {
     setTimerResetKey((k) => k + 1)
@@ -164,26 +177,22 @@ export default function QuizTaker({
         }
       }
 
-      if (e.key === 'ArrowRight') {
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        if (!canAdvance) return
         if (currentIndex < totalQuestions - 1) {
           goTo(currentIndex + 1)
         } else {
           setShowConfirm(true)
         }
       } else if (e.key === 'ArrowLeft') {
-        goTo(currentIndex - 1)
-      } else if (e.key === 'Enter') {
-        if (currentIndex < totalQuestions - 1) {
-          goTo(currentIndex + 1)
-        } else {
-          setShowConfirm(true)
-        }
+        // Previous is disabled — do nothing
+        return
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentIndex, currentQuestion, totalQuestions, goTo, handleAnswer, timedOutQuestions])
+  }, [currentIndex, currentQuestion, totalQuestions, goTo, handleAnswer, timedOutQuestions, canAdvance])
 
   async function handleSubmit() {
     setSubmitting(true)
@@ -452,9 +461,8 @@ export default function QuizTaker({
         <Button
           variant="outline"
           size="default"
-          onClick={() => goTo(currentIndex - 1)}
-          disabled={currentIndex === 0}
-          className="w-full sm:w-auto font-semibold px-4 h-9 rounded-xl border-border/80 hover:bg-muted"
+          disabled
+          className="w-full sm:w-auto font-semibold px-4 h-9 rounded-xl border-border/80 opacity-40 cursor-not-allowed"
         >
           <ChevronLeft className="w-4 h-4 mr-1" />
           Previous
@@ -480,9 +488,9 @@ export default function QuizTaker({
               <button
                 key={q.id}
                 type="button"
-                onClick={() => goTo(i)}
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all ${pillStyle}`}
-                aria-label={`Go to question ${i + 1}${isTimedOut ? ' (Timed out)' : isAnswered ? ' (Answered)' : ''}`}
+                disabled
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all cursor-not-allowed ${pillStyle}`}
+                aria-label={`Question ${i + 1}${isTimedOut ? ' (Timed out)' : isAnswered ? ' (Answered)' : ''}`}
                 aria-current={isCurrent ? 'step' : undefined}
               >
                 {i + 1}
@@ -495,7 +503,8 @@ export default function QuizTaker({
           <Button
             size="default"
             onClick={() => goTo(currentIndex + 1)}
-            className="w-full sm:w-auto font-semibold px-5 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+            disabled={!canAdvance}
+            className="w-full sm:w-auto font-semibold px-5 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Next
             <ChevronRight className="w-4 h-4 ml-1" />
@@ -504,8 +513,8 @@ export default function QuizTaker({
           <Button
             size="default"
             onClick={() => setShowConfirm(true)}
-            disabled={submitting}
-            className="w-full sm:w-auto font-semibold px-5 h-9 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xs"
+            disabled={submitting || !canAdvance}
+            className="w-full sm:w-auto font-semibold px-5 h-9 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
@@ -521,9 +530,7 @@ export default function QuizTaker({
       <div className="text-center text-[11px] text-muted-foreground/75 flex items-center justify-center gap-2 flex-wrap select-none">
         <span><kbd className="px-1 py-0.5 rounded bg-muted border text-[10px] font-mono">A-D</kbd> or <kbd className="px-1 py-0.5 rounded bg-muted border text-[10px] font-mono">1-4</kbd> Select</span>
         <span>·</span>
-        <span><kbd className="px-1 py-0.5 rounded bg-muted border text-[10px] font-mono">→</kbd> / <kbd className="px-1 py-0.5 rounded bg-muted border text-[10px] font-mono">Enter</kbd> Next</span>
-        <span>·</span>
-        <span><kbd className="px-1 py-0.5 rounded bg-muted border text-[10px] font-mono">←</kbd> Previous</span>
+        <span><kbd className="px-1 py-0.5 rounded bg-muted border text-[10px] font-mono">→</kbd> / <kbd className="px-1 py-0.5 rounded bg-muted border text-[10px] font-mono">Enter</kbd> Next (after answering)</span>
       </div>
 
       {/* Confirm Submit Dialog */}
