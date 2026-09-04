@@ -18,8 +18,6 @@ const generateSchema = z.object({
   randomizeChoices: z.boolean(),
 })
 
-const MAX_RETRIES_PER_QUESTION = 3
-
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -301,17 +299,18 @@ async function generateValidatedQuestions(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const validatedQuestions: any[] = []
   const existingTexts: string[] = []
+  const existingAnswers: string[] = []
   let totalAttempts = 0
-  const maxAttempts = targetCount * MAX_RETRIES_PER_QUESTION
+  const maxAttempts = Math.max(targetCount * 3, 12)
 
   while (validatedQuestions.length < targetCount && totalAttempts < maxAttempts) {
     totalAttempts++
 
     const remaining = targetCount - validatedQuestions.length
-    const batchSize = Math.min(3, remaining)
+    const batchSize = Math.min(5, remaining)
 
-    // Pick a diverse spread of chunks for this batch
-    const chunkSubset = pickDiverseChunks(chunks, 6, totalAttempts)
+    // Pick a diverse spread of chunks across the material for this batch
+    const chunkSubset = pickDiverseChunks(chunks, 8, totalAttempts)
 
     try {
       const generated = await generateQuestions({
@@ -335,12 +334,14 @@ async function generateValidatedQuestions(
           chunkSubset,
           existingTexts,
           questionType,
-          difficulty
+          difficulty,
+          existingAnswers
         )
 
         if (result.isValid && result.question) {
           validatedQuestions.push(result.question)
-          existingTexts.push(q.question)
+          existingTexts.push(result.question.question)
+          existingAnswers.push(result.question.correct_answer)
           console.log(`Question ${validatedQuestions.length}/${targetCount} validated`)
         } else {
           console.log('Question failed validation:', result.issues)
@@ -348,7 +349,6 @@ async function generateValidatedQuestions(
       }
     } catch (error) {
       console.error(`Generation attempt ${totalAttempts} failed:`, error)
-      // Brief pause before retry to avoid rate limits
       await new Promise((r) => setTimeout(r, 1000))
     }
   }

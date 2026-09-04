@@ -14,20 +14,18 @@ export async function GET(
   }
 
   const { attemptId } = await params
+  const serviceClient = createServiceClient()
 
   // Verify ownership
-  const { data: attempt } = await supabase
+  const { data: attempt } = await serviceClient
     .from('quiz_attempts')
     .select('*')
     .eq('id', attemptId)
-    .eq('user_id', user.id)
     .single()
 
-  if (!attempt) {
+  if (!attempt || attempt.user_id !== user.id) {
     return NextResponse.json({ error: 'Attempt not found' }, { status: 404 })
   }
-
-  const serviceClient = createServiceClient()
 
   // Get answers with questions
   const { data: answers } = await serviceClient
@@ -42,7 +40,7 @@ export async function GET(
     .eq('attempt_id', attemptId)
 
   // Get quiz details
-  const { data: quiz } = await supabase
+  const { data: quiz } = await serviceClient
     .from('quizzes')
     .select('*')
     .eq('id', attempt.quiz_id)
@@ -56,7 +54,7 @@ export async function GET(
     })
     .filter((id): id is string => !!id) ?? []
 
-  let chunkSourceMap: Map<string, { materialName: string; pageNumber: number | null; sectionTitle: string | null }> = new Map()
+  const chunkSourceMap: Map<string, { materialName: string; pageNumber: number | null; sectionTitle: string | null }> = new Map()
 
   if (sourceChunkIds.length > 0) {
     const { data: chunks } = await serviceClient

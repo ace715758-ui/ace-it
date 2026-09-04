@@ -17,6 +17,7 @@ export const quizConfigSchema = z.object({
   questionType: z.enum(['multiple_choice', 'true_false', 'identification', 'mixed']),
   randomizeQuestions: z.boolean(),
   randomizeChoices: z.boolean(),
+  timeLimitPerQuestion: z.number().int().min(0).max(300),
 })
 
 export const profileUpdateSchema = z.object({
@@ -24,6 +25,15 @@ export const profileUpdateSchema = z.object({
     .string()
     .min(2, 'Full name must be at least 2 characters')
     .max(100, 'Full name must be less than 100 characters'),
+  headline: z
+    .string()
+    .max(100, 'Headline must be less than 100 characters')
+    .optional(),
+  avatarUrl: z
+    .string()
+    .url('Invalid URL format')
+    .or(z.literal(''))
+    .optional(),
 })
 
 export type QuizConfigInput = z.infer<typeof quizConfigSchema>

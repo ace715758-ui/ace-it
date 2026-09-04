@@ -62,63 +62,65 @@ export default function SignUpForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-        <CardDescription>
-          Enter your details below to create your student account
+    <Card className="w-full max-w-md rounded-2xl border-border/80 shadow-xl bg-card/95 backdrop-blur-sm">
+      <CardHeader className="space-y-1 text-center pb-4">
+        <CardTitle className="text-2xl font-extrabold tracking-tight text-foreground">Create an account</CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          Enter your details below to create your Ace-It! student account
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           {/* Full Name */}
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="fullName" className="text-sm font-semibold">Full Name</Label>
             <Input
               id="fullName"
               type="text"
-              placeholder="Juan dela Cruz"
+              placeholder="e.g. Ace Magbanua"
               autoComplete="name"
+              className="rounded-xl h-11"
               aria-invalid={!!errors.fullName}
               aria-describedby={errors.fullName ? 'fullName-error' : undefined}
               {...register('fullName')}
             />
             {errors.fullName && (
-              <p id="fullName-error" className="text-sm text-destructive" role="alert">
+              <p id="fullName-error" className="text-xs font-medium text-destructive" role="alert">
                 {errors.fullName.message}
               </p>
             )}
           </div>
 
           {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-sm font-semibold">Email</Label>
             <Input
               id="email"
               type="email"
-              placeholder="juan@example.com"
+              placeholder="student@example.com"
               autoComplete="email"
+              className="rounded-xl h-11"
               aria-invalid={!!errors.email}
               aria-describedby={errors.email ? 'email-error' : undefined}
               {...register('email')}
             />
             {errors.email && (
-              <p id="email-error" className="text-sm text-destructive" role="alert">
+              <p id="email-error" className="text-xs font-medium text-destructive" role="alert">
                 {errors.email.message}
               </p>
             )}
           </div>
 
           {/* Password */}
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-sm font-semibold">Password</Label>
             <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Min. 8 characters"
                 autoComplete="new-password"
-                className="pr-10"
+                className="pr-10 rounded-xl h-11"
                 aria-invalid={!!errors.password}
                 aria-describedby={errors.password ? 'password-error' : undefined}
                 {...register('password')}
@@ -133,22 +135,22 @@ export default function SignUpForm() {
               </button>
             </div>
             {errors.password && (
-              <p id="password-error" className="text-sm text-destructive" role="alert">
+              <p id="password-error" className="text-xs font-medium text-destructive" role="alert">
                 {errors.password.message}
               </p>
             )}
           </div>
 
           {/* Confirm Password */}
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="confirmPassword" className="text-sm font-semibold">Confirm Password</Label>
             <div className="relative">
               <Input
                 id="confirmPassword"
                 type={showConfirm ? 'text' : 'password'}
                 placeholder="Repeat your password"
                 autoComplete="new-password"
-                className="pr-10"
+                className="pr-10 rounded-xl h-11"
                 aria-invalid={!!errors.confirmPassword}
                 aria-describedby={errors.confirmPassword ? 'confirm-error' : undefined}
                 {...register('confirmPassword')}
@@ -163,13 +165,13 @@ export default function SignUpForm() {
               </button>
             </div>
             {errors.confirmPassword && (
-              <p id="confirm-error" className="text-sm text-destructive" role="alert">
+              <p id="confirm-error" className="text-xs font-medium text-destructive" role="alert">
                 {errors.confirmPassword.message}
               </p>
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full rounded-xl h-11 font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20" disabled={isLoading}>
             {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Create Account
           </Button>

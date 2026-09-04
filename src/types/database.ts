@@ -11,6 +11,7 @@ export interface Profile {
   full_name: string
   email: string
   avatar_url: string | null
+  headline?: string | null
   created_at: string
   updated_at: string
 }
@@ -47,6 +48,7 @@ export interface Quiz {
   difficulty: Difficulty
   question_count: number
   question_type: QuestionType
+  time_limit_per_question?: number | null
   created_at: string
 }
 

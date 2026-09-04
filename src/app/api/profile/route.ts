@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 const updateProfileSchema = z.object({
-  full_name: z.string().min(2).max(100),
+  full_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
+  headline: z.string().max(100).optional().nullable(),
+  avatar_url: z.string().optional().nullable(),
 })
 
 export async function GET() {
@@ -14,13 +17,22 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
+  const serviceClient = createServiceClient()
+  const { data: profile } = await serviceClient
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
 
-  return NextResponse.json({ profile })
+  const userMeta = user.user_metadata || {}
+
+  return NextResponse.json({
+    profile: {
+      ...profile,
+      headline: profile?.headline || userMeta.headline || 'Student',
+      avatar_url: profile?.avatar_url || userMeta.avatar_url || null,
+    },
+  })
 }
 
 export async function PATCH(request: NextRequest) {
@@ -40,19 +52,63 @@ export async function PATCH(request: NextRequest) {
 
   const parsed = updateProfileSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.message }, { status: 400 })
+    return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid data' }, { status: 400 })
   }
 
-  const { data: profile, error } = await supabase
+  const { full_name, headline, avatar_url } = parsed.data
+  const serviceClient = createServiceClient()
+
+  // 1. Update auth.users metadata for immediate session synchronization
+  await supabase.auth.updateUser({
+    data: {
+      full_name,
+      headline: headline || 'Student',
+      avatar_url: avatar_url || null,
+    },
+  })
+
+  // 2. Update profiles table
+  // Attempt with headline column first; fall back if column doesn't exist yet
+  const updatePayload: Record<string, unknown> = {
+    full_name,
+    avatar_url: avatar_url || null,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (headline !== undefined) {
+    updatePayload.headline = headline || 'Student'
+  }
+
+  let { data: profile, error } = await serviceClient
     .from('profiles')
-    .update({ full_name: parsed.data.full_name })
+    .update(updatePayload)
     .eq('id', user.id)
     .select()
     .single()
 
+  // If error is related to missing 'headline' column in table schema
+  if (error && error.message.includes('headline')) {
+    delete updatePayload.headline
+    const retry = await serviceClient
+      .from('profiles')
+      .update(updatePayload)
+      .eq('id', user.id)
+      .select()
+      .single()
+    profile = retry.data
+    error = retry.error
+  }
+
   if (error) {
+    console.error('Profile update error:', error)
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
   }
 
-  return NextResponse.json({ profile })
+  return NextResponse.json({
+    profile: {
+      ...profile,
+      headline: headline || profile?.headline || 'Student',
+      avatar_url: avatar_url ?? profile?.avatar_url ?? null,
+    },
+  })
 }

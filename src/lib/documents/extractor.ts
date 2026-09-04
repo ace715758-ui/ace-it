@@ -17,11 +17,10 @@ export async function extractFromPDF(buffer: Buffer): Promise<ExtractionResult> 
 
   // Point workerSrc to the bundled worker file so pdfjs doesn't try to
   // fetch it from a URL (which fails in a Node.js/Next.js server context).
-  // We use require.resolve to get the absolute filesystem path, then
-  // convert it to a file:// URL that pdfjs can load via dynamic import.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const workerPath = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')
-  const workerUrl = `file://${workerPath.replace(/\\/g, '/')}`
+  const { pathToFileURL } = await import('node:url')
+  const path = await import('node:path')
+  const workerPath = path.resolve(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs')
+  const workerUrl = pathToFileURL(workerPath).href
   pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
   const uint8Array = new Uint8Array(buffer)

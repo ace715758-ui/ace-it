@@ -62,48 +62,49 @@ export default function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-        <CardDescription>Enter your credentials to access your account</CardDescription>
+    <Card className="w-full max-w-md rounded-2xl border-border/80 shadow-xl bg-card/95 backdrop-blur-sm">
+      <CardHeader className="space-y-1 text-center pb-4">
+        <CardTitle className="text-2xl font-extrabold tracking-tight text-foreground">Welcome back</CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">Enter your credentials to access your Ace-It! account</CardDescription>
       </CardHeader>
       <CardContent>
         {message === 'check-email' && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+          <div className="mb-4 p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-medium text-emerald-800 dark:text-emerald-200">
             Account created! Please check your email to verify your account before logging in.
           </div>
         )}
         {message === 'password-reset' && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+          <div className="mb-4 p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-medium text-emerald-800 dark:text-emerald-200">
             Password updated successfully. You can now log in with your new password.
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-sm font-semibold">Email</Label>
             <Input
               id="email"
               type="email"
-              placeholder="juan@example.com"
+              placeholder="student@example.com"
               autoComplete="email"
+              className="rounded-xl h-11"
               aria-invalid={!!errors.email}
               aria-describedby={errors.email ? 'email-error' : undefined}
               {...register('email')}
             />
             {errors.email && (
-              <p id="email-error" className="text-sm text-destructive" role="alert">
+              <p id="email-error" className="text-xs font-medium text-destructive" role="alert">
                 {errors.email.message}
               </p>
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm font-semibold">Password</Label>
               <Link
                 href="/forgot-password"
-                className="text-xs text-primary hover:underline"
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
               >
                 Forgot password?
               </Link>
@@ -114,7 +115,7 @@ export default function LoginForm() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Your password"
                 autoComplete="current-password"
-                className="pr-10"
+                className="pr-10 rounded-xl h-11"
                 aria-invalid={!!errors.password}
                 aria-describedby={errors.password ? 'password-error' : undefined}
                 {...register('password')}
@@ -129,13 +130,13 @@ export default function LoginForm() {
               </button>
             </div>
             {errors.password && (
-              <p id="password-error" className="text-sm text-destructive" role="alert">
+              <p id="password-error" className="text-xs font-medium text-destructive" role="alert">
                 {errors.password.message}
               </p>
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full rounded-xl h-11 font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20" disabled={isLoading}>
             {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Log In
           </Button>

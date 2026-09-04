@@ -5,7 +5,12 @@ import QuizCreateClient from '@/components/quiz/QuizCreateClient'
 
 export const metadata: Metadata = { title: 'Create Quiz' }
 
-export default async function CreateQuizPage() {
+export default async function CreateQuizPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ materialId?: string }>
+}) {
+  const params = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -17,5 +22,5 @@ export default async function CreateQuizPage() {
     .eq('user_id', user.id)
     .order('uploaded_at', { ascending: false })
 
-  return <QuizCreateClient materials={materials ?? []} />
+  return <QuizCreateClient materials={materials ?? []} initialMaterialId={params?.materialId} />
 }

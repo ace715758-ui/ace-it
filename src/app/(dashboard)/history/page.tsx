@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import HistoryClient from '@/components/quiz/HistoryClient'
 
-export const metadata: Metadata = { title: 'Quiz History' }
+export const metadata: Metadata = { title: 'Quiz History | Ace-It!' }
 
 export default async function HistoryPage() {
   const supabase = await createClient()
@@ -11,7 +12,8 @@ export default async function HistoryPage() {
 
   if (!user) redirect('/login')
 
-  const { data: attempts } = await supabase
+  const serviceClient = createServiceClient()
+  const { data: attempts } = await serviceClient
     .from('quiz_attempts')
     .select(`
       *,
@@ -20,7 +22,18 @@ export default async function HistoryPage() {
     .eq('user_id', user.id)
     .not('completed_at', 'is', null)
     .order('completed_at', { ascending: false })
-    .limit(50)
+    .limit(100)
 
-  return <HistoryClient attempts={attempts ?? []} />
+  const normalizedAttempts = (attempts ?? []).map((attempt) => {
+    const rawQuiz = attempt.quizzes
+    const quiz = (Array.isArray(rawQuiz) ? rawQuiz[0] : rawQuiz) ?? null
+    return {
+      ...attempt,
+      percentage: Number(attempt.percentage) || 0,
+      quizzes: quiz,
+    }
+  })
+
+  return <HistoryClient attempts={normalizedAttempts} />
 }
+

@@ -4,13 +4,53 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { extractText } from '@/lib/documents/extractor'
 import { chunkText } from '@/lib/documents/chunker'
 import { generateEmbeddingsBatch } from '@/lib/ai/embeddings'
-import { isValidFileType, MAX_FILE_SIZE, resolveMimeType } from '@/types/material'
+import {
+  isValidFileType,
+  MAX_FILE_SIZE,
+  MAX_FILE_SIZE_FORMATTED,
+  resolveMimeType,
+  getSupportedFileTypesInfo,
+  ACCEPT_FILE_TYPES,
+  SUPPORTED_EXTENSIONS,
+  SUPPORTED_FILE_TYPES,
+} from '@/types/material'
 
 // Increase body size limit for this route to 55MB (default is 10MB)
 export const maxDuration = 300 // 5 min timeout for large file processing
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      Allow: 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'X-Supported-File-Types': ACCEPT_FILE_TYPES,
+      'X-Max-File-Size': String(MAX_FILE_SIZE),
+    },
+  })
+}
+
+export async function GET(request: NextRequest) {
+  // If ?types=true or ?action=file-types is requested, return supported upload types
+  const searchParams = request.nextUrl.searchParams
+  if (
+    searchParams.get('types') === 'true' ||
+    searchParams.get('action') === 'file-types' ||
+    searchParams.get('action') === 'supported-types'
+  ) {
+    return NextResponse.json({
+      success: true,
+      supportedFileTypes: getSupportedFileTypesInfo(),
+      supportedExtensions: [...SUPPORTED_EXTENSIONS],
+      supportedMimeTypes: Object.keys(SUPPORTED_FILE_TYPES),
+      maxFileSize: MAX_FILE_SIZE,
+      maxFileSizeFormatted: MAX_FILE_SIZE_FORMATTED,
+      accept: ACCEPT_FILE_TYPES,
+    })
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -112,8 +152,14 @@ export async function POST(request: NextRequest) {
         .from('materials')
         .update({ processing_status: 'failed' })
         .eq('id', materialId)
+
+      const isRlsError = storageError.message?.toLowerCase().includes('row-level security')
+      const errorMessage = isRlsError
+        ? `Row-level security policy violation on storage. Please ensure SUPABASE_SERVICE_ROLE_KEY is set in .env.local (copy service_role secret from Supabase Settings → API Keys).`
+        : `Failed to upload file: ${storageError.message}`
+
       return NextResponse.json(
-        { error: `Failed to upload file: ${storageError.message}` },
+        { error: errorMessage },
         { status: 500 }
       )
     }

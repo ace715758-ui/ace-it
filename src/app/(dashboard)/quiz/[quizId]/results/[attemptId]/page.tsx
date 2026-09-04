@@ -17,20 +17,27 @@ export default async function ResultsPage({
 
   if (!user) redirect('/login')
 
-  const { data: attempt } = await supabase
+  const serviceClient = createServiceClient()
+
+  const { data: attempt, error: attemptError } = await serviceClient
     .from('quiz_attempts')
     .select('*')
     .eq('id', attemptId)
-    .eq('user_id', user.id)
     .eq('quiz_id', quizId)
     .single()
 
-  if (!attempt) notFound()
-
-  const serviceClient = createServiceClient()
+  if (attemptError || !attempt || attempt.user_id !== user.id) {
+    console.error('ResultsPage: attempt not found or does not belong to user:', {
+      attemptError,
+      attemptId,
+      quizId,
+      userId: user.id,
+    })
+    notFound()
+  }
 
   const [{ data: quiz }, { data: answers }] = await Promise.all([
-    supabase.from('quizzes').select('*').eq('id', quizId).single(),
+    serviceClient.from('quizzes').select('*').eq('id', quizId).single(),
     serviceClient
       .from('answers')
       .select(`

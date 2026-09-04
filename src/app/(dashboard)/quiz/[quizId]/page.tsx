@@ -8,25 +8,27 @@ export const metadata: Metadata = { title: 'Take Quiz' }
 
 export default async function QuizPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ quizId: string }>
+  searchParams?: Promise<{ timer?: string }>
 }) {
   const { quizId } = await params
+  const resolvedSearchParams = (await searchParams) ?? {}
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')
 
-  const { data: quiz } = await supabase
+  const serviceClient = createServiceClient()
+  const { data: quiz } = await serviceClient
     .from('quizzes')
     .select('*')
     .eq('id', quizId)
-    .eq('user_id', user.id)
     .single()
 
-  if (!quiz) notFound()
+  if (!quiz || quiz.user_id !== user.id) notFound()
 
-  const serviceClient = createServiceClient()
   const { data: questions } = await serviceClient
     .from('questions')
     .select('id, question_text, question_type, options, question_order, difficulty')
@@ -37,9 +39,13 @@ export default async function QuizPage({
     redirect('/quiz/create')
   }
 
+  const timerParam = resolvedSearchParams.timer ? parseInt(resolvedSearchParams.timer, 10) : undefined
+  const initialTimerSeconds = !isNaN(timerParam ?? NaN) ? timerParam : (quiz.time_limit_per_question ?? 20)
+
   return (
     <QuizTaker
       quiz={quiz}
+      initialTimerSeconds={initialTimerSeconds}
       questions={questions as Array<{
         id: string
         question_text: string

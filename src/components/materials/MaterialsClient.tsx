@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import {
-  BookOpen,
   CheckCircle2,
   Clock,
   FileText,
@@ -17,6 +16,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import Image from 'next/image'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import type { Material } from '@/types/database'
-import { formatFileSize, getFileTypeLabel, SUPPORTED_EXTENSIONS, MAX_FILE_SIZE, resolveMimeType, isValidFileType } from '@/types/material'
+import { formatFileSize, getFileTypeLabel, ACCEPT_FILE_TYPES, MAX_FILE_SIZE, resolveMimeType, isValidFileType, isSupportedExtension } from '@/types/material'
 
 interface MaterialsClientProps {
   initialMaterials: Material[]
@@ -93,7 +93,7 @@ export default function MaterialsClient({ initialMaterials }: MaterialsClientPro
       }
 
       const ext = '.' + file.name.split('.').pop()?.toLowerCase()
-      if (!SUPPORTED_EXTENSIONS.includes(ext)) {
+      if (!isSupportedExtension(ext)) {
         toast.error(`"${file.name}" is not a supported file type. Use PDF, DOCX, PPTX, or TXT.`)
         continue
       }
@@ -263,7 +263,7 @@ export default function MaterialsClient({ initialMaterials }: MaterialsClientPro
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.docx,.pptx,.txt"
+        accept={ACCEPT_FILE_TYPES}
         multiple
         className="hidden"
         onChange={(e) => handleFileUpload(e.target.files)}
@@ -272,16 +272,29 @@ export default function MaterialsClient({ initialMaterials }: MaterialsClientPro
 
       {/* Materials List */}
       {materials.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-semibold text-lg mb-2">No learning materials yet</h3>
-            <p className="text-muted-foreground text-sm mb-6">
-              Upload your first PDF, DOCX, PPTX, or TXT file to get started.
-            </p>
-            <Button onClick={() => fileInputRef.current?.click()}>
-              <Upload className="w-4 h-4 mr-1.5" />
-              Upload Material
+        <Card className="rounded-3xl border-dashed border-2 overflow-hidden shadow-sm">
+          <CardContent className="py-12 px-6 text-center max-w-md mx-auto space-y-4">
+            <div className="relative w-48 h-36 mx-auto rounded-2xl overflow-hidden shadow-md border border-border/80 bg-muted/40">
+              <Image
+                src="/images/ai_transform_doc.jpg"
+                alt="Upload study notes and documents to Ace-It!"
+                fill
+                className="object-cover object-center"
+                sizes="200px"
+              />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-foreground">No learning materials yet</h3>
+              <p className="text-muted-foreground text-xs leading-relaxed mt-1">
+                Upload course PDFs, Word documents, PowerPoint slides, or notes to automatically generate practice quizzes.
+              </p>
+            </div>
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-10 px-6 shadow-sm shadow-indigo-600/25"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Your First Material
             </Button>
           </CardContent>
         </Card>

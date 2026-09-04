@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   BookOpen,
   Brain,
   CheckCircle2,
   ChevronRight,
+  Clock,
   Loader2,
   Upload,
 } from 'lucide-react'
@@ -31,6 +32,7 @@ import type { Material } from '@/types/database'
 
 interface QuizCreateClientProps {
   materials: Pick<Material, 'id' | 'original_filename' | 'file_type' | 'uploaded_at' | 'processing_status'>[]
+  initialMaterialId?: string
 }
 
 const GENERATION_STEPS = [
@@ -42,36 +44,42 @@ const GENERATION_STEPS = [
   'Preparing your quiz...',
 ]
 
-export default function QuizCreateClient({ materials }: QuizCreateClientProps) {
+export default function QuizCreateClient({ materials, initialMaterialId }: QuizCreateClientProps) {
   const router = useRouter()
   const [generating, setGenerating] = useState(false)
   const [generationStep, setGenerationStep] = useState(0)
   const [generationProgress, setGenerationProgress] = useState(0)
   const [completedSteps, setCompletedSteps] = useState<number[]>([])
   const [customCount, setCustomCount] = useState(false)
+  const [customTimer, setCustomTimer] = useState(false)
 
   const completedMaterials = materials.filter((m) => m.processing_status === 'completed')
+  const matchedInitial = initialMaterialId
+    ? completedMaterials.find((m) => m.id === initialMaterialId)
+    : null
 
   const {
     register,
     handleSubmit,
     control,
-    watch,
     formState: { errors },
   } = useForm<QuizConfigInput>({
     resolver: zodResolver(quizConfigSchema),
     defaultValues: {
-      title: '',
-      materialIds: [],
+      title: matchedInitial
+        ? `Practice: ${matchedInitial.original_filename.replace(/\.[^/.]+$/, '')}`
+        : '',
+      materialIds: matchedInitial ? [matchedInitial.id] : [],
       questionCount: 10,
       difficulty: 'medium',
       questionType: 'multiple_choice',
       randomizeQuestions: true,
       randomizeChoices: true,
+      timeLimitPerQuestion: 30,
     },
   })
 
-  const selectedMaterials = watch('materialIds')
+  const selectedMaterials = useWatch({ control, name: 'materialIds' }) ?? []
 
   async function onSubmit(data: QuizConfigInput) {
     setGenerating(true)
@@ -119,7 +127,8 @@ export default function QuizCreateClient({ materials }: QuizCreateClientProps) {
         toast.success(`Quiz created with ${result.questionCount} questions!`)
       }
 
-      router.push(`/quiz/${result.quizId}`)
+      const timerParam = data.timeLimitPerQuestion !== undefined ? `?timer=${data.timeLimitPerQuestion}` : ''
+      router.push(`/quiz/${result.quizId}${timerParam}`)
     } catch {
       clearInterval(stepInterval)
       toast.error('Something went wrong. Please try again.')
@@ -384,6 +393,82 @@ export default function QuizCreateClient({ materials }: QuizCreateClientProps) {
                   </Select>
                 )}
               />
+            </div>
+
+            {/* Timer per Question — Inspired by Technical Blueprint Dial */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-cyan-500" />
+                  <span>Time per Question</span>
+                </Label>
+                <Badge variant="outline" className="text-xs font-mono border-cyan-500/30 text-cyan-600 dark:text-cyan-400">
+                  Animated Dial
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Challenge yourself with a circular countdown dial, or take your time in practice mode.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { label: '30s (Fast)', value: 30 },
+                  { label: '45s (Standard)', value: 45 },
+                  { label: '60s (Thoughtful)', value: 60 },
+                  { label: '90s (Complex)', value: 90 },
+                  { label: 'Unlimited (Practice)', value: 0 },
+                ].map((preset) => (
+                  <Controller
+                    key={preset.value}
+                    name="timeLimitPerQuestion"
+                    control={control}
+                    render={({ field }) => (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomTimer(false)
+                          field.onChange(preset.value)
+                        }}
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                          field.value === preset.value && !customTimer
+                            ? 'bg-indigo-600 text-white border-indigo-600 dark:bg-indigo-500 dark:text-white font-semibold shadow-xs'
+                            : 'border-border hover:bg-muted'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    )}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCustomTimer(true)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                    customTimer
+                      ? 'bg-indigo-600 text-white border-indigo-600 dark:bg-indigo-500 dark:text-white font-semibold shadow-xs'
+                      : 'border-border hover:bg-muted'
+                  }`}
+                >
+                  Custom
+                </button>
+              </div>
+              {customTimer && (
+                <div className="flex items-center gap-2 pt-1">
+                  <Input
+                    type="number"
+                    min={5}
+                    max={300}
+                    placeholder="Seconds (5-300)"
+                    className="max-w-xs font-mono"
+                    {...register('timeLimitPerQuestion', { valueAsNumber: true })}
+                  />
+                  <span className="text-xs text-muted-foreground font-mono">seconds per question</span>
+                </div>
+              )}
+              {errors.timeLimitPerQuestion && (
+                <p className="text-sm text-destructive" role="alert">
+                  {errors.timeLimitPerQuestion.message}
+                </p>
+              )}
             </div>
 
             {/* Toggles */}
