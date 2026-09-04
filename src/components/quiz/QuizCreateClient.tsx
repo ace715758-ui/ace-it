@@ -359,13 +359,13 @@ export default function QuizCreateClient({ materials, initialMaterialId }: QuizC
                 control={control}
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="max-w-xs">
-                      <SelectValue />
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select difficulty" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="easy">Easy — Definitions & basic facts</SelectItem>
-                      <SelectItem value="medium">Medium — Understanding & application</SelectItem>
-                      <SelectItem value="hard">Hard — Analysis & deep reasoning</SelectItem>
+                      <SelectItem value="easy">Easy — Definitions &amp; basic facts</SelectItem>
+                      <SelectItem value="medium">Medium — Understanding &amp; application</SelectItem>
+                      <SelectItem value="hard">Hard — Analysis &amp; deep reasoning</SelectItem>
                       <SelectItem value="mixed">Mixed — Variety of difficulties</SelectItem>
                     </SelectContent>
                   </Select>
@@ -381,8 +381,8 @@ export default function QuizCreateClient({ materials, initialMaterialId }: QuizC
                 control={control}
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="max-w-xs">
-                      <SelectValue />
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select question type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
