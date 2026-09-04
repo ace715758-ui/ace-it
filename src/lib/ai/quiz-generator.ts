@@ -276,11 +276,16 @@ export async function generateQuestions(
 
   const { resolvedType, resolvedDifficulty } = resolveTypes(questionType, difficulty)
 
+  const rawKey = process.env.AI_API_KEY ?? ''
   const hasApiKey = Boolean(
-    process.env.AI_API_KEY &&
-    !process.env.AI_API_KEY.includes('your-key') &&
-    !process.env.AI_API_KEY.startsWith('sk-...')
+    rawKey &&
+    rawKey !== 'your-key' &&
+    rawKey !== 'sk-...' &&
+    !rawKey.includes('your-key') &&
+    rawKey.length > 10
   )
+
+  console.log(`[AI] provider=${getProvider()} hasApiKey=${hasApiKey} keyPrefix=${rawKey.slice(0, 8)}`)
 
   if (hasApiKey) {
     try {
@@ -306,8 +311,10 @@ export async function generateQuestions(
         return result
       }
     } catch (apiError) {
-      console.warn('AI API call failed, using source-grounded heuristic fallback:', apiError)
+      console.error('[AI] API call failed, falling back to heuristic:', apiError)
     }
+  } else {
+    console.warn('[AI] No valid API key found — using heuristic fallback. Set AI_API_KEY in environment variables.')
   }
 
   return generateGroundedQuestionsFromChunks(chunks, count, resolvedType, resolvedDifficulty)
