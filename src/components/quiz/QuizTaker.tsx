@@ -91,19 +91,40 @@ export default function QuizTaker({
   const answeredCount = Object.keys(answers).length
   const progressPercent = Math.round(((currentIndex + 1) / totalQuestions) * 100)
 
-  // Handle question timeout
+  // Handle question timeout: auto-advance to next question like a real timed exam
   const handleTimeout = useCallback(() => {
     if (!currentQuestion) return
-    setTimedOutQuestions((prev) => ({ ...prev, [currentQuestion.id]: true }))
-    toast.warning(`Time is up for Question ${currentIndex + 1}!`, {
-      description: 'Make your best choice or proceed to the next question.',
-      duration: 3000,
-    })
-  }, [currentQuestion, currentIndex])
 
-  const handleAnswer = useCallback((questionId: string, answer: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: answer }))
-  }, [])
+    setTimedOutQuestions((prev) => ({ ...prev, [currentQuestion.id]: true }))
+
+    if (currentIndex < totalQuestions - 1) {
+      toast.warning(`Time's up for Question ${currentIndex + 1}!`, {
+        description: `Transitioning to Question ${currentIndex + 2}...`,
+        duration: 2500,
+      })
+      // Smoothly advance after brief 350ms pause to let user hear time's up chime
+      setTimeout(() => {
+        setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))
+      }, 350)
+    } else {
+      toast.error("Time's up for the final question!", {
+        description: 'Test time has concluded. Please review and submit your quiz.',
+        duration: 4000,
+      })
+      setTimeout(() => {
+        setShowConfirm(true)
+      }, 350)
+    }
+  }, [currentQuestion, currentIndex, totalQuestions])
+
+  const handleAnswer = useCallback(
+    (questionId: string, answer: string) => {
+      // If question has already timed out, lock answers to ensure fairness
+      if (timedOutQuestions[questionId]) return
+      setAnswers((prev) => ({ ...prev, [questionId]: answer }))
+    },
+    [timedOutQuestions]
+  )
 
   const goTo = useCallback((index: number) => {
     if (index >= 0 && index < totalQuestions) {
@@ -121,17 +142,24 @@ export default function QuizTaker({
       const target = e.target as HTMLElement
       if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') return
 
-      if (currentQuestion && currentQuestion.question_type !== 'identification' && currentQuestion.options) {
+      const isCurrentTimedOut = Boolean(currentQuestion && timedOutQuestions[currentQuestion.id])
+
+      if (currentQuestion && !isCurrentTimedOut && currentQuestion.question_type !== 'identification' && currentQuestion.options) {
         const key = e.key.toUpperCase()
         if (currentQuestion.question_type === 'true_false') {
           if (key === 'T') handleAnswer(currentQuestion.id, 'True')
           if (key === 'F') handleAnswer(currentQuestion.id, 'False')
           if (key === '1') handleAnswer(currentQuestion.id, currentQuestion.options[0])
           if (key === '2') handleAnswer(currentQuestion.id, currentQuestion.options[1])
-        } else {
-          const letterMap: Record<string, number> = { A: 0, B: 1, C: 2, D: 3, '1': 0, '2': 1, '3': 2, '4': 3 }
-          if (letterMap[key] !== undefined && letterMap[key] < currentQuestion.options.length) {
-            handleAnswer(currentQuestion.id, currentQuestion.options[letterMap[key]])
+        } else if (currentQuestion.question_type === 'multiple_choice') {
+          const charCode = key.charCodeAt(0)
+          if (charCode >= 65 && charCode < 65 + currentQuestion.options.length) {
+            const index = charCode - 65
+            handleAnswer(currentQuestion.id, currentQuestion.options[index])
+          }
+          const num = parseInt(key, 10)
+          if (!isNaN(num) && num >= 1 && num <= currentQuestion.options.length) {
+            handleAnswer(currentQuestion.id, currentQuestion.options[num - 1])
           }
         }
       }
@@ -155,7 +183,7 @@ export default function QuizTaker({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentIndex, currentQuestion, totalQuestions, goTo, handleAnswer])
+  }, [currentIndex, currentQuestion, totalQuestions, goTo, handleAnswer, timedOutQuestions])
 
   async function handleSubmit() {
     setSubmitting(true)
@@ -243,8 +271,8 @@ export default function QuizTaker({
               ))}
             </div>
 
-            {/* Live Inline Compact Timer Dial */}
-            {timerDuration > 0 && (
+            {/* Live Inline Compact Timer Dial or Timed Out indicator */}
+            {timerDuration > 0 && !isQuestionTimedOut && (
               <TimerDial
                 key={`${currentIndex}-${timerDuration}-${timerResetKey}`}
                 initialSeconds={timerDuration}
@@ -252,6 +280,12 @@ export default function QuizTaker({
                 compact={true}
                 onReset={resetQuestionTimer}
               />
+            )}
+            {timerDuration > 0 && isQuestionTimedOut && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-rose-300 dark:border-rose-800/80 bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 text-xs font-bold select-none shadow-2xs">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Time Expired</span>
+              </div>
             )}
           </div>
         </div>
@@ -335,11 +369,17 @@ export default function QuizTaker({
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
+                    disabled={isQuestionTimedOut}
                     onClick={() => handleAnswer(currentQuestion.id, option)}
-                    className={`w-full group text-left px-3.5 py-3 rounded-xl border-2 transition-all duration-150 flex items-center justify-between gap-3 cursor-pointer relative ${
-                      isSelected
-                        ? 'border-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/40 shadow-xs ring-2 ring-indigo-500/20'
-                        : 'border-border/80 bg-background/80 hover:border-indigo-400 hover:bg-muted/40'
+                    className={`w-full group text-left px-3.5 py-3 rounded-xl border-2 transition-all duration-150 flex items-center justify-between gap-3 relative ${
+                      isQuestionTimedOut
+                        ? 'cursor-not-allowed opacity-60 ' +
+                          (isSelected
+                            ? 'border-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/30'
+                            : 'border-border/60 bg-muted/20')
+                        : isSelected
+                        ? 'border-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/40 shadow-xs ring-2 ring-indigo-500/20 cursor-pointer'
+                        : 'border-border/80 bg-background/80 hover:border-indigo-400 hover:bg-muted/40 cursor-pointer'
                     }`}
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -386,12 +426,17 @@ export default function QuizTaker({
           {currentQuestion.question_type === 'identification' && (
             <div className="space-y-2 pt-1">
               <Textarea
-                placeholder="Type your answer here..."
+                placeholder={isQuestionTimedOut ? 'Time expired for this question.' : 'Type your answer here...'}
                 value={answers[currentQuestion.id] ?? ''}
+                disabled={isQuestionTimedOut}
                 onChange={(e) => handleAnswer(currentQuestion.id, e.target.value)}
-                className="resize-none font-sans text-sm sm:text-base min-h-[85px] p-3 rounded-xl border-2 border-border/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className={`resize-none font-sans text-sm sm:text-base min-h-[85px] p-3 rounded-xl border-2 transition-all ${
+                  isQuestionTimedOut
+                    ? 'border-border/60 bg-muted/40 text-muted-foreground cursor-not-allowed'
+                    : 'border-border/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20'
+                }`}
                 aria-label="Your answer"
-                autoFocus
+                autoFocus={!isQuestionTimedOut}
               />
               <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
                 <HelpCircle className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -419,21 +464,25 @@ export default function QuizTaker({
         <div className="flex gap-1.5 flex-wrap justify-center max-w-md" aria-label="Question selector">
           {questions.map((q, i) => {
             const isAnswered = Boolean(answers[q.id])
+            const isTimedOut = Boolean(timedOutQuestions[q.id])
             const isCurrent = i === currentIndex
+
+            let pillStyle = 'bg-muted/70 text-muted-foreground hover:bg-muted border border-border/60 hover:text-foreground'
+            if (isCurrent) {
+              pillStyle = 'bg-indigo-600 text-white ring-2 ring-indigo-500/30 shadow-xs scale-105'
+            } else if (isAnswered) {
+              pillStyle = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/35 hover:bg-emerald-500/25'
+            } else if (isTimedOut) {
+              pillStyle = 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/35 hover:bg-rose-500/25'
+            }
 
             return (
               <button
                 key={q.id}
                 type="button"
                 onClick={() => goTo(i)}
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all ${
-                  isCurrent
-                    ? 'bg-indigo-600 text-white ring-2 ring-indigo-500/30 shadow-xs scale-105'
-                    : isAnswered
-                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/35 hover:bg-emerald-500/25'
-                    : 'bg-muted/70 text-muted-foreground hover:bg-muted border border-border/60 hover:text-foreground'
-                }`}
-                aria-label={`Go to question ${i + 1}`}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all ${pillStyle}`}
+                aria-label={`Go to question ${i + 1}${isTimedOut ? ' (Timed out)' : isAnswered ? ' (Answered)' : ''}`}
                 aria-current={isCurrent ? 'step' : undefined}
               >
                 {i + 1}

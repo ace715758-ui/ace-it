@@ -94,8 +94,23 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8 pb-10 animate-in fade-in duration-500">
-      {/* 1. Hero Banner matching Modern EdTech Aesthetic (Inspired by user design) */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0b0f2e] via-[#121648] to-[#1d1b54] p-6 sm:p-9 lg:p-10 text-white shadow-2xl border border-indigo-500/20">
+      {/* 1. Hero Banner matching Modern EdTech Aesthetic (Seamless Background Integration) */}
+      <div className="relative overflow-hidden rounded-3xl bg-[#070b24] p-6 sm:p-9 lg:p-10 text-white shadow-2xl border border-indigo-500/20">
+        {/* Seamless background artwork on the right side - integrated directly into banner background with zero borders */}
+        <div className="hidden lg:block absolute inset-y-0 right-0 w-[52%] pointer-events-none overflow-hidden select-none">
+          <Image
+            src="/images/dashboard_flow_seamless.jpg"
+            alt="AI Learning Transformation Flow"
+            fill
+            className="object-cover object-center lg:object-right scale-105 [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.4)_15%,black_45%)]"
+            priority
+          />
+          {/* Atmospheric gradient blending */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#070b24] via-[#070b24]/30 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#070b24]/70 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#070b24]/50 to-transparent" />
+        </div>
+
         {/* Glow & subtle abstract background shapes */}
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-pink-500/15 blur-3xl pointer-events-none" />
@@ -148,23 +163,13 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Hero Visual on Desktop */}
-          <div className="hidden lg:block lg:col-span-5 relative group">
-            <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-indigo-950/60">
-              <Image
-                src="/images/dashboard_flow_desk.jpg"
-                alt="From your content to your practice quiz"
-                fill
-                className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                sizes="(max-width: 1024px) 100vw, 450px"
-                priority
-              />
-              <div className="absolute bottom-2.5 inset-x-2.5 p-2 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/15 text-center flex items-center justify-center gap-1.5 shadow-lg">
-                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-                <p className="text-[11px] font-bold text-white tracking-wide">
-                  From your content → To your practice quiz
-                </p>
-              </div>
+          {/* Right column placeholder for layout balance */}
+          <div className="hidden lg:flex lg:col-span-5 items-end justify-end min-h-[220px]">
+            <div className="px-4 py-2 rounded-full bg-[#070b24]/80 backdrop-blur-md border border-white/10 text-center flex items-center justify-center gap-2 shadow-xl">
+              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+              <p className="text-xs font-semibold text-slate-200">
+                From your content → To your practice quiz
+              </p>
             </div>
           </div>
         </div>

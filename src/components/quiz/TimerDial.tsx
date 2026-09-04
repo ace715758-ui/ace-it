@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Pause, Play, RotateCcw } from 'lucide-react'
+import { Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { timerAudio } from '@/lib/audio/timer-sounds'
 
 interface TimerDialProps {
   initialSeconds: number
@@ -28,8 +29,25 @@ export default function TimerDial({
 }: TimerDialProps) {
   const [timeLeft, setTimeLeft] = useState<number>(initialSeconds)
   const [isPaused, setIsPaused] = useState<boolean>(false)
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
+    try {
+      const saved = localStorage.getItem('ace_timer_sound')
+      return saved !== null ? saved === 'true' : true
+    } catch {
+      return true
+    }
+  })
+
   const timeoutCalledRef = useRef<boolean>(false)
   const onTimeoutRef = useRef(onTimeout)
+  const soundEnabledRef = useRef<boolean>(true)
+  const prevSecondRef = useRef<number>(Math.ceil(initialSeconds))
+
+  // Keep sound ref synced
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled
+  }, [soundEnabled])
 
   // Keep ref up to date with latest onTimeout callback
   useEffect(() => {
@@ -40,10 +58,12 @@ export default function TimerDial({
   const rawId = React.useId()
   const uid = rawId.replace(/[^a-zA-Z0-9]/g, '')
 
+  // Countdown timer interval
   useEffect(() => {
     if (initialSeconds <= 0) return
 
     timeoutCalledRef.current = false
+    prevSecondRef.current = Math.ceil(initialSeconds)
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -53,6 +73,10 @@ export default function TimerDial({
           clearInterval(interval)
           if (!timeoutCalledRef.current) {
             timeoutCalledRef.current = true
+            // Play time up chime if sound is enabled
+            if (soundEnabledRef.current) {
+              timerAudio.playTimeUpChime()
+            }
             // Run onTimeout outside React's render/state-updater cycle to avoid setState during render
             setTimeout(() => {
               onTimeoutRef.current?.()
@@ -66,6 +90,36 @@ export default function TimerDial({
 
     return () => clearInterval(interval)
   }, [initialSeconds, isPaused])
+
+  // Play audio tick during countdown: soft tick from 10s-6s, urgent tick from 5s-1s
+  useEffect(() => {
+    const currentSec = Math.ceil(timeLeft)
+    if (currentSec !== prevSecondRef.current) {
+      prevSecondRef.current = currentSec
+      if (soundEnabled && !isPaused && currentSec > 0) {
+        if (currentSec <= 5) {
+          timerAudio.playTick(true)
+        } else if (currentSec <= 10) {
+          timerAudio.playTick(false)
+        }
+      }
+    }
+  }, [timeLeft, soundEnabled, isPaused])
+
+  function toggleSound() {
+    setSoundEnabled((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('ace_timer_sound', String(next))
+      } catch {
+        // Ignore
+      }
+      if (next) {
+        timerAudio.playToggleSound()
+      }
+      return next
+    })
+  }
 
   const fraction = initialSeconds > 0 ? Math.max(0, Math.min(1, timeLeft / initialSeconds)) : 0
   const strokeDashoffset = CIRCUMFERENCE * (1 - fraction)
@@ -153,6 +207,22 @@ export default function TimerDial({
         {/* Quick Controls */}
         {showControls && (
           <div className="flex items-center gap-1 pl-1 border-l border-border/60">
+            {/* Audio Toggle */}
+            <button
+              type="button"
+              onClick={toggleSound}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              title={soundEnabled ? 'Mute timer sound' : 'Enable timer countdown & chime sounds'}
+              aria-label={soundEnabled ? 'Mute timer sound' : 'Enable timer countdown & chime sounds'}
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              ) : (
+                <VolumeX className="w-3.5 h-3.5 text-muted-foreground/60" />
+              )}
+            </button>
+
+            {/* Pause / Play */}
             <button
               type="button"
               onClick={() => setIsPaused((p) => !p)}
@@ -167,6 +237,7 @@ export default function TimerDial({
               )}
             </button>
 
+            {/* Reset */}
             {onReset && (
               <button
                 type="button"
@@ -248,23 +319,38 @@ export default function TimerDial({
       </div>
 
       {showControls && (
-        <button
-          type="button"
-          onClick={() => setIsPaused((p) => !p)}
-          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all px-2.5 py-0.5 rounded-full bg-muted/40 hover:bg-muted border border-border/60"
-        >
-          {isPaused ? (
-            <>
-              <Play className="w-3 h-3 text-primary fill-primary" />
-              <span>Resume</span>
-            </>
-          ) : (
-            <>
-              <Pause className="w-3 h-3 text-amber-500 fill-amber-500" />
-              <span>Pause</span>
-            </>
-          )}
-        </button>
+        <div className="mt-2 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={toggleSound}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all px-2.5 py-0.5 rounded-full bg-muted/40 hover:bg-muted border border-border/60"
+            title={soundEnabled ? 'Mute timer sound' : 'Enable timer sound'}
+          >
+            {soundEnabled ? (
+              <Volume2 className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+            ) : (
+              <VolumeX className="w-3 h-3 text-muted-foreground" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsPaused((p) => !p)}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-all px-2.5 py-0.5 rounded-full bg-muted/40 hover:bg-muted border border-border/60"
+          >
+            {isPaused ? (
+              <>
+                <Play className="w-3 h-3 text-primary fill-primary" />
+                <span>Resume</span>
+              </>
+            ) : (
+              <>
+                <Pause className="w-3 h-3 text-amber-500 fill-amber-500" />
+                <span>Pause</span>
+              </>
+            )}
+          </button>
+        </div>
       )}
     </div>
   )
